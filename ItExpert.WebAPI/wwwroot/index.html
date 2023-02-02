@@ -1,0 +1,161 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Задание 1</title>
+  <meta charset="utf-8" />
+  <style>
+    table,
+    td {
+      border: 1px solid #333;
+    }
+
+    thead,
+    tfoot {
+      background-color: #333;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Список значений</h2>
+  <div>
+    <p>
+      <button id="resetButton">Сбросить</button>
+      <button id="addButton">Добавить</button>
+    </p>
+    <input type="hidden" id="modelId" />
+    <p>
+      Код:<br />
+      <input id="modelCode" type="number" />
+    </p>
+    <p>
+      Значение:<br />
+      <input id="modelValue" />
+    </p>
+    <p>
+      <button id="updateButton">Обновить</button>
+      <button id="sendButton">Отправить</button>
+    </p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Порядковый номер</th>
+        <th>Код</th>
+        <th>Значение</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+
+  <script>
+    async function getModels() {
+      const response = await fetch("/api/values", {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+      });
+
+      if (response.ok === true) {
+        const models = await response.json();
+        const rows = document.querySelector("tbody");
+
+        models.forEach(model => {
+          const tr = createRow(model.serialNumber, model.code, model.value);
+          tr.setAttribute("data-rowid", model.id);
+
+          return rows.append(tr);
+        });
+      }
+    }
+
+    async function sendValues() {
+      const models = [];
+      const body = document.querySelector("tbody");
+      const rows = body.rows;
+      const rowLength = rows.length;
+
+      for (i = 0; i < rowLength; i++) {
+        let oCells = rows.item(i).cells;
+        let code = oCells.item(1).innerHTML;
+        let value = oCells.item(2).innerHTML;
+
+        models.push({ code, value });
+      }
+
+      const messageBody = JSON.stringify(models);
+      const response = await fetch("api/values", {
+        method: "POST",
+        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        body: messageBody
+      });
+
+      if (response.ok === true) {
+        reset();
+        const models = await response.json();
+        const rows = document.querySelector("tbody");
+
+        models.forEach(model => {
+          const tr = createRow(model.serialNumber, model.code, model.value);
+          tr.setAttribute("data-rowid", model.id);
+
+          return rows.append(tr);
+        });
+      }
+      else {
+        const error = await response.json();
+        console.log(error.message);
+      }
+    }
+
+    function createRow(modelSerialNumber, modelCode, modelValue) {
+      const tr = document.createElement("tr");
+
+      tr.setAttribute("data-serialNumber", modelSerialNumber);
+      const serialNumberTd = document.createElement("td");
+      serialNumberTd.append(modelSerialNumber);
+      tr.append(serialNumberTd);
+
+      tr.setAttribute("data-code", modelCode);
+      const codeTd = document.createElement("td");
+      codeTd.append(modelCode);
+      tr.append(codeTd);
+
+      tr.setAttribute("data-value", modelValue);
+      const valueTd = document.createElement("td");
+      valueTd.append(modelValue);
+      tr.append(valueTd);
+
+      return tr;
+    }
+
+    function reset() {
+      const oldTbody = document.querySelector("tbody");
+      const newTbody = document.createElement("tbody");
+
+      oldTbody.parentNode.replaceChild(newTbody, oldTbody)
+    }
+
+    async function addValue() {
+      const code = document.getElementById("modelCode").value;
+      const value = document.getElementById("modelValue").value;
+      const tr = createRow(0, code, value);
+      const rows = document.querySelector("tbody");
+
+      rows.append(tr);
+    }
+
+    document.getElementById("updateButton").addEventListener("click", async () => {
+      reset();
+      getModels();
+    });
+
+    document.getElementById("sendButton").addEventListener("click", async () => sendValues());
+    document.getElementById("addButton").addEventListener("click", async () => addValue());
+    document.getElementById("resetButton").addEventListener("click", () => reset());
+  </script>
+</body>
+
+</html>
